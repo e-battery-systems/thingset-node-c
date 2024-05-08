@@ -1546,9 +1546,9 @@ struct thingset_data_object
 
 #ifdef CONFIG_THINGSET_OBJECT_LOOKUP_MAP
     /**
-     * Pointer to next node in list for map lookup
+     * Pointer to next node in the bucket for map lookup
      */
-    sys_snode_t node;
+    struct thingset_data_object *bucket_next;
 #endif /* CONFIG_THINGSET_OBJECT_LOOKUP_MAP */
 };
 
@@ -1584,7 +1584,7 @@ struct thingset_context
     /**
      * Array of linked lists: map for object ID lookup
      */
-    sys_slist_t data_objects_lookup[CONFIG_THINGSET_OBJECT_LOOKUP_BUCKETS];
+    struct thingset_data_object *data_objects_lookup[CONFIG_THINGSET_OBJECT_LOOKUP_BUCKETS];
 #endif
 
     /**

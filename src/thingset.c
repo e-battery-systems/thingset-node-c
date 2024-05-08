@@ -57,14 +57,20 @@ static void thingset_init_common(struct thingset_context *ts)
 {
 #ifdef CONFIG_THINGSET_OBJECT_LOOKUP_MAP
     for (unsigned int b = 0; b < CONFIG_THINGSET_OBJECT_LOOKUP_BUCKETS; b++) {
-        sys_slist_init(&ts->data_objects_lookup[b]);
+        ts->data_objects_lookup[b] = NULL;
     }
 
     for (unsigned int i = 0; i < ts->num_objects; i++) {
         struct thingset_data_object *object = &ts->data_objects[i];
-        sys_slist_append(
-            &ts->data_objects_lookup[object->id % CONFIG_THINGSET_OBJECT_LOOKUP_BUCKETS],
-            &object->node);
+        /* in case the objects were not declared static and thus not properly null-initialized */
+        object->bucket_next = NULL;
+
+        size_t bucket = object->id % CONFIG_THINGSET_OBJECT_LOOKUP_BUCKETS;
+        struct thingset_data_object **last = &ts->data_objects_lookup[bucket];
+        while (*last != NULL) {
+            last = &(*last)->bucket_next;
+        }
+        *last = object;
     }
 #endif
     ts->auth_flags = THINGSET_USR_MASK;
@@ -549,14 +555,14 @@ struct thingset_data_object *thingset_get_child_by_name(struct thingset_context 
 struct thingset_data_object *thingset_get_object_by_id(struct thingset_context *ts, uint16_t id)
 {
 #ifdef CONFIG_THINGSET_OBJECT_LOOKUP_MAP
-    sys_slist_t *list = &ts->data_objects_lookup[id % CONFIG_THINGSET_OBJECT_LOOKUP_BUCKETS];
-    sys_snode_t *pnode;
-    struct thingset_data_object *object;
-    SYS_SLIST_FOR_EACH_NODE(list, pnode)
-    {
-        object = CONTAINER_OF(pnode, struct thingset_data_object, node);
+    struct thingset_data_object *object =
+        ts->data_objects_lookup[id % CONFIG_THINGSET_OBJECT_LOOKUP_BUCKETS];
+    while (object != NULL) {
         if (object->id == id) {
             return object;
+        }
+        else {
+            object = object->bucket_next;
         }
     }
 #else
